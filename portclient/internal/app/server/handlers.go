@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+
 	"portsvc/proto"
 )
 
@@ -14,8 +15,7 @@ func (s *Server) handleLanding() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("Hello I'm the rest client"))
+		w.Write([]byte(`<!DOCTYPE html><html><body>Ports Client<BR><BR>Browse to <a href="http://localhost:8080/ports">http://localhost:8080/ports</a> to get ports.</body></html>`))
 	}
 }
 

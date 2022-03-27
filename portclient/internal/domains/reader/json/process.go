@@ -7,13 +7,14 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"portsvc/proto"
 	"sync"
+
+	"portsvc/proto"
 )
 
 type JsonReader struct {
 	c        *http.Client
-	Ports    chan map[string]proto.Port
+	ports    chan map[string]proto.Port
 	filePath string
 }
 
@@ -26,22 +27,19 @@ func New(filePath string) (JsonReader, chan map[string]proto.Port) {
 	return JsonReader{
 		c:        http.DefaultClient,
 		filePath: filePath,
-		Ports:    portCh,
+		ports:    portCh,
 	}, portCh
 }
 
-// Run starts the JsonReader. It reads through the json file and at each port sends
-// it on the channel for something else to save to the service.
-func (r JsonReader) Run(ctx context.Context, wg *sync.WaitGroup) {
-	// tell the caller that we've stopped
-	defer wg.Done()
-
-	log.Println("JsonReader started")
+// Read processes the configured json file and puts ports onto a channel for another process to deal with.
+func (r JsonReader) Read() {
+	// This goroutine created the channel, so it should be responsibe for closing it.
+	defer close(r.ports)
 
 	// Default to path that works locally unless we were given an alternative.
 	path := "files/ports.json"
 	if len(r.filePath) > 0 {
-		path = fmt.Sprintf("%sports.json", r.filePath)
+		path = r.filePath
 	}
 
 	file, err := os.Open(path)
@@ -67,20 +65,34 @@ func (r JsonReader) Run(ctx context.Context, wg *sync.WaitGroup) {
 		if !ok {
 			log.Fatal(fmt.Errorf("cannot convert port key to string"))
 		}
+
 		var p proto.Port
 		err = dec.Decode(&p)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		r.Ports <- map[string]proto.Port{id: p}
+		r.ports <- map[string]proto.Port{id: p}
 		i++
+
+		log.Printf("%s processed\n", id)
 	}
 
-	// This goroutine created the channel so it is best to close it
-	close(r.Ports)
-	log.Printf("%d Ports loaded", i)
+	log.Printf("%d Port(s) loaded", i)
+}
 
+// Run starts reading data and waits until the passed ctx is cancelled.
+func (r JsonReader) Run(ctx context.Context, wg *sync.WaitGroup) {
+	// tell the caller that we've stopped
+	defer wg.Done()
+
+	log.Println("JsonReader started")
+
+	go r.Read()
+
+	// Code will block here, so when the data has all been read it'll wait here.
+	// Wise to have a way of cancelling this long-running process if the
+	// data is still being read but we want to leave this func.
 	<-ctx.Done()
 	log.Println("reader: caller has told us to stop")
 

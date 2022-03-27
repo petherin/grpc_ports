@@ -3,8 +3,9 @@ package grpc
 import (
 	"context"
 	"log"
-	"portsvc/proto"
 	"sync"
+
+	"portsvc/proto"
 )
 
 type Repo struct {
@@ -26,7 +27,7 @@ func (r Repo) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	log.Println("Saver started...")
-	
+
 	for {
 		select {
 		case port := <-r.portCh:

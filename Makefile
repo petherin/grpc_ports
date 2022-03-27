@@ -15,6 +15,9 @@ stop: ##@application Stops Go containers
 logs: ##@application Outputs container logs
 	$(DOCKER_COMPOSE) logs -f --tail 100 $(CONTAINER_NAME)
 
+test: ##@application Run tests
+	cd portclient && go test ./...
+
 proto: ##@gRPC Generate code from proto file. Requires protoc installs. Would be better to run this in a container to have all the dependencies inside it.
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative portsvc/proto/ports.proto
 
