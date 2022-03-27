@@ -9,6 +9,8 @@ import (
 	"syscall"
 
 	"portclient/internal/app/server"
+	"portclient/internal/domains/reader/json"
+	saver "portclient/internal/domains/repo/grpc"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -26,7 +28,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	///////////////////////////////////
-	// gRPC portsClient
+	// gRPC portsClient needed by HTTP server and repo object to save to gRPC service
 	defaultAddress := "0.0.0.0:50051"
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -47,6 +49,20 @@ func main() {
 	wg.Add(1)
 	go svr.Run(ctx, &wg)
 	///////////////////////////////////
+
+	////////////////////////////////////////
+	// Run json reader
+	jsonReader, portCh := json.New()
+	wg.Add(1)
+	go jsonReader.Run(ctx, &wg)
+	////////////////////////////////////////
+
+	////////////////////////////////////////
+	// Run saver
+	saver := saver.New(portCh, portsClient)
+	wg.Add(1)
+	go saver.Run(ctx, &wg)
+	////////////////////////////////////////
 
 	// Now all the go routines are running, listen for Ctrl-c.
 	c := make(chan os.Signal, 1)

@@ -1,7 +1,10 @@
-runsvc: ##@application Run service as Go app
+runsvc: ##@application Run service Go app
 	cd portsvc && go run cmd/grpc/main.go
 
-proto: ##@gRPC Generate code from proto file
+runcli: ##@application Run client Go app
+	cd portclient && go run cmd/rest/main.go
+
+proto: ##@gRPC Generate code from proto file. Requires protoc installs. Would be better to run this in a container to have all the dependencies inside it.
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative portsvc/proto/ports.proto
 
 # Color settings for the making the help information look pretty

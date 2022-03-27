@@ -20,25 +20,8 @@ func main() {
 
 	grpcServer := grpc.NewServer(opts...)
 
-	//TODO replace later, pass in test list of ports
-	testList := map[string]proto.Port{
-		"AEAJM": {
-			Name:    "Ajman",
-			City:    "Ajman",
-			Country: "United Arab Emirates",
-			Alias:   nil,
-			Regions: nil,
-			Coordinates: []float32{
-				55.5136433,
-				25.4052165,
-			},
-			Timezone: "Asia/Dubai",
-			Unlocs:   []string{"AEAJM"},
-			Code:     "52000",
-		},
-	}
-
-	proto.RegisterPortsServer(grpcServer, proto.NewService(testList))
+	ports := make(map[string]proto.Port)
+	proto.RegisterPortsServer(grpcServer, proto.NewService(ports))
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
