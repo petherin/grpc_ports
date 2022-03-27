@@ -4,7 +4,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/petherin/grpc_ports_svc/proto"
+	"github.com/petherin/grpc_ports/portsvc/proto"
 
 	"google.golang.org/grpc"
 )
