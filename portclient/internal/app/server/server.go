@@ -8,17 +8,19 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"portsvc/proto"
 )
 
 type Server struct {
 	Router     mux.Router
 	HTTPServer *http.Server
 	c          *http.Client
+	client     proto.PortsClient
 }
 
-// New creates a new web server.
-func New(addr string) Server {
-	svr := Server{c: http.DefaultClient}
+// New creates a new web server. Takes in a client to talk to the ports gRPC service.
+func New(addr string, client proto.PortsClient) Server {
+	svr := Server{c: http.DefaultClient, client: client}
 	svr.routes()
 
 	svr.HTTPServer = &http.Server{

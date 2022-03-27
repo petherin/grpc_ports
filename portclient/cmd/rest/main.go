@@ -8,7 +8,11 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/petherin/grpc_ports_cli/internal/app/server"
+	"portclient/internal/app/server"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"portsvc/proto"
 )
 
 func main() {
@@ -21,9 +25,28 @@ func main() {
 	// A WaitGroup for the goroutines to tell us they've stopped.
 	wg := sync.WaitGroup{}
 
-	svr := server.New(defaultPort)
+	///////////////////////////////////
+	// gRPC portsClient
+	defaultAddress := "0.0.0.0:50051"
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	log.Println("Dialling port service...")
+	conn, err := grpc.Dial(defaultAddress, opts...)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+	portsClient := proto.NewPortsClient(conn)
+	///////////////////////////////////
+
+	///////////////////////////////////
+	// HTTP server
+	svr := server.New(defaultPort, portsClient)
 	wg.Add(1)
 	go svr.Run(ctx, &wg)
+	///////////////////////////////////
 
 	// Now all the go routines are running, listen for Ctrl-c.
 	c := make(chan os.Signal, 1)
