@@ -1,0 +1,33 @@
+version: '3'
+services:
+
+  ports_service:
+    image: petherin/portsvc:latest
+    hostname: portsvc
+    container_name: portsvc
+    networks:
+      - ports-network
+    security_opt:
+      - seccomp:unconfined
+
+  ports_client:
+    image: petherin/portclient:latest
+    container_name: portclient
+    hostname: portclient
+    environment:
+      FILE_PATH: "/usr/local/bin/files/"
+      SVC_URL: portsvc:50051
+    expose:
+      - 8080
+    networks:
+      - ports-network
+    ports:
+      - "8080:8080"
+    security_opt:
+      - seccomp:unconfined
+    depends_on:
+      - ports_service
+
+networks:
+  ports-network:
+    name: ports-network

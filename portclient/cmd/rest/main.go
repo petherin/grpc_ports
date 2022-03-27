@@ -29,13 +29,19 @@ func main() {
 
 	///////////////////////////////////
 	// gRPC portsClient needed by HTTP server and repo object to save to gRPC service
-	defaultAddress := "0.0.0.0:50051"
+	// Get service URL
+	address := os.Getenv("SVC_URL")
+	if address == "" {
+		// Default to address that works locally unless given alternative.
+		address = "0.0.0.0:50051"
+	}
+
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
 	log.Println("Dialling port service...")
-	conn, err := grpc.Dial(defaultAddress, opts...)
+	conn, err := grpc.Dial(address, opts...)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,7 +58,8 @@ func main() {
 
 	////////////////////////////////////////
 	// Run json reader
-	jsonReader, portCh := json.New()
+	filePath := os.Getenv("FILE_PATH")
+	jsonReader, portCh := json.New(filePath)
 	wg.Add(1)
 	go jsonReader.Run(ctx, &wg)
 	////////////////////////////////////////

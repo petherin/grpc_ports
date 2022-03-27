@@ -12,20 +12,21 @@ import (
 )
 
 type JsonReader struct {
-	c     *http.Client
-	url   string
-	Ports chan map[string]proto.Port
+	c        *http.Client
+	Ports    chan map[string]proto.Port
+	filePath string
 }
 
 // New creates a JsonReader object and a channel to pass back ports as they're read.
 // This is unbuffered so will block as each port is processed. Would be better to have
 // a buffer so a few ports can be processed without blocking. Would need to be able
 // to save more than one port at a time to the service, maybe using gRPC streaming.
-func New() (JsonReader, chan map[string]proto.Port) {
+func New(filePath string) (JsonReader, chan map[string]proto.Port) {
 	portCh := make(chan map[string]proto.Port)
 	return JsonReader{
-		c:     http.DefaultClient,
-		Ports: portCh,
+		c:        http.DefaultClient,
+		filePath: filePath,
+		Ports:    portCh,
 	}, portCh
 }
 
@@ -37,7 +38,11 @@ func (r JsonReader) Run(ctx context.Context, wg *sync.WaitGroup) {
 
 	log.Println("JsonReader started")
 
+	// Default to path that works locally unless we were given an alternative.
 	path := "files/ports.json"
+	if len(r.filePath) > 0 {
+		path = fmt.Sprintf("%sports.json", r.filePath)
+	}
 
 	file, err := os.Open(path)
 	if err != nil {

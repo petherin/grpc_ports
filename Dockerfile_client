@@ -1,0 +1,29 @@
+# builder image
+FROM golang:1.18-alpine as builder
+
+ENV GOPATH=/go \
+  APP_PATH=/code \
+  CODE_PATH=$APP_PATH/grpc_ports/portclient \
+  CGO_ENABLED=0 \
+  GOFLAGS=-mod=vendor
+
+# Copy source code to the container.
+WORKDIR $CODE_PATH
+COPY portclient .
+
+# build a binary
+RUN go build -o ${GOPATH}/bin/portclient ./cmd/rest/main.go
+
+# --- production stage ---
+# https://hub.docker.com/_/alpine/
+FROM alpine:3.13 AS production
+
+COPY ./portclient/files /usr/local/bin/files
+
+# copy the built binary from the build process.
+COPY --from=builder /go/bin/portclient /usr/local/bin/portclient
+
+# run the binary.
+CMD ["/usr/local/bin/portclient"]
+
+EXPOSE 8080

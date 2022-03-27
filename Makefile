@@ -1,11 +1,35 @@
-runsvc: ##@application Run service Go app
-	cd portsvc && go run cmd/grpc/main.go
+IMAGE_NAME_CLI=petherin/portclient
+IMAGE_NAME_SVC=petherin/portsvc
+IMAGE_TAG=latest
+SEMVER_IMAGE_TAG=$(tag)
+CONTAINER_NAME=ports_client
+DOCKER_COMPOSE=docker-compose
 
-runcli: ##@application Run client Go app
-	cd portclient && go run cmd/rest/main.go
+start: ##@application Start application in containers.
+	$(DOCKER_COMPOSE) up -d
+
+stop: ##@application Stops Go containers
+	$(DOCKER_COMPOSE) down -v --remove-orphans
+	$(DOCKER_COMPOSE) rm -v -f -s
+
+logs: ##@application Outputs container logs
+	$(DOCKER_COMPOSE) logs -f --tail 100 $(CONTAINER_NAME)
 
 proto: ##@gRPC Generate code from proto file. Requires protoc installs. Would be better to run this in a container to have all the dependencies inside it.
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative portsvc/proto/ports.proto
+
+build: ##@docker Builds all images from the Dockerfiles and applies two tags: 'latest' and provided tag e.g, tag=0.0.1 make build
+	docker build --no-cache -f Dockerfile_client -t $(IMAGE_NAME_CLI):$(IMAGE_TAG) -t $(IMAGE_NAME_CLI):$(SEMVER_IMAGE_TAG) . && \
+	docker build --no-cache -f Dockerfile_service -t $(IMAGE_NAME_SVC):$(IMAGE_TAG) -t $(IMAGE_NAME_SVC):$(SEMVER_IMAGE_TAG) .
+
+push: ##@docker Pushes image to Docker with tags: 'latest' and provided tag e.g. tag=0.0.1 make push
+	docker push $(IMAGE_NAME_CLI):$(SEMVER_IMAGE_TAG) && \
+    docker push $(IMAGE_NAME_CLI):$(IMAGE_TAG) && \
+    docker push $(IMAGE_NAME_SVC):$(SEMVER_IMAGE_TAG)  && \
+  	docker push $(IMAGE_NAME_SVC):$(IMAGE_TAG)
+
+login: ##@docker Login to Docker Hub (need to provide password)
+	docker login --username petherin
 
 # Color settings for the making the help information look pretty
 GREEN  := $(shell tput -Txterm setaf 2)
