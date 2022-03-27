@@ -1,4 +1,4 @@
-module github.com/petherin/grpc_ports
+module github.com/petherin/grpc_ports_svc
 
 go 1.18
 

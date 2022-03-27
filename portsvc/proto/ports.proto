@@ -27,10 +27,10 @@ message Port {
   string name = 1;
   string city = 2;
   string country = 3;
-  repeated string alias =4 ;
+  repeated string alias = 4 ;
   repeated string regions = 5;
   repeated float coordinates = 6;
   string timezone = 7;
   repeated string unlocs = 8;
-  string code=9;
+  string code= 9;
 }
