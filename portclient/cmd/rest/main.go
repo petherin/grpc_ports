@@ -5,20 +5,24 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
-	"syscall"
-
+	"portclient/internal/app/config"
 	"portclient/internal/app/server"
 	"portclient/internal/domains/reader/json"
 	saver "portclient/internal/domains/repo/grpc"
+	"portsvc/proto"
+	"sync"
+	"syscall"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"portsvc/proto"
 )
 
 func main() {
 	const defaultPort = ":8080"
+	cfg, err := config.Get()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Create context that we can pass to go routines and cancel.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -28,26 +32,42 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	///////////////////////////////////
-	// gRPC portsClient needed by HTTP server and repo object to save to gRPC service
-	// Get service URL
-	address := os.Getenv("SVC_URL")
-	if address == "" {
-		// Default to address that works locally unless given alternative.
-		address = "0.0.0.0:50051"
-	}
-
+	// gRPC portsClient. Required by HTTP server and repo object to save to gRPC service.
 	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
 	}
 
-	log.Println("Dialling port service...")
-	conn, err := grpc.Dial(address, opts...)
+	log.Println("Dialling port service")
+	conn, err := grpc.Dial(cfg.SvcURL, opts...)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer conn.Close()
+	log.Println("Port service connection established")
 	portsClient := proto.NewPortsClient(conn)
 	///////////////////////////////////
+
+	////////////////////////////////////////
+	// Run saver
+	saver, portCh := saver.New(portsClient)
+	wg.Add(1)
+	go saver.Run(ctx, &wg)
+	////////////////////////////////////////
+
+	////////////////////////////////////////
+	// Run json reader
+	file, err := os.Open(cfg.FilePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	jsonReader := json.New(file, portCh)
+	wg.Add(1)
+	go jsonReader.Run(ctx, &wg)
+	////////////////////////////////////////
 
 	///////////////////////////////////
 	// HTTP server
@@ -55,21 +75,6 @@ func main() {
 	wg.Add(1)
 	go svr.Run(ctx, &wg)
 	///////////////////////////////////
-
-	////////////////////////////////////////
-	// Run json reader
-	filePath := os.Getenv("FILE_PATH")
-	jsonReader, portCh := json.New(filePath)
-	wg.Add(1)
-	go jsonReader.Run(ctx, &wg)
-	////////////////////////////////////////
-
-	////////////////////////////////////////
-	// Run saver
-	saver := saver.New(portCh, portsClient)
-	wg.Add(1)
-	go saver.Run(ctx, &wg)
-	////////////////////////////////////////
 
 	// Now all the go routines are running, listen for Ctrl-c.
 	c := make(chan os.Signal, 1)

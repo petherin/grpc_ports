@@ -4,52 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"os"
-	"sync"
-
 	"portsvc/proto"
+	"sync"
 )
 
 type JsonReader struct {
-	c        *http.Client
-	ports    chan map[string]proto.Port
-	filePath string
+	c          *http.Client
+	ports      chan map[string]proto.Port
+	fileReader io.Reader
 }
 
-// New creates a JsonReader object and a channel to pass back ports as they're read.
-// This is unbuffered so will block as each port is processed. Would be better to have
-// a buffer so a few ports can be processed without blocking. Would need to be able
-// to save more than one port at a time to the service, maybe using gRPC streaming.
-func New(filePath string) (JsonReader, chan map[string]proto.Port) {
-	portCh := make(chan map[string]proto.Port)
+// New creates a JsonReader object.
+func New(fileReader io.Reader, portCh chan map[string]proto.Port) JsonReader {
 	return JsonReader{
-		c:        http.DefaultClient,
-		filePath: filePath,
-		ports:    portCh,
-	}, portCh
+		c:          http.DefaultClient,
+		fileReader: fileReader,
+		ports:      portCh,
+	}
 }
 
 // Read processes the configured json file and puts ports onto a channel for another process to deal with.
 func (r JsonReader) Read() {
-	// This goroutine created the channel, so it should be responsibe for closing it.
+	// This goroutine created the channel, so it should be responsible for closing it.
 	defer close(r.ports)
 
-	// Default to path that works locally unless we were given an alternative.
-	path := "files/ports.json"
-	if len(r.filePath) > 0 {
-		path = r.filePath
-	}
+	dec := json.NewDecoder(r.fileReader)
 
-	file, err := os.Open(path)
-	if err != nil {
-		log.Panicf("cannot open %s: %s", path, err.Error())
-	}
-
-	dec := json.NewDecoder(file)
-
-	_, err = dec.Token()
+	_, err := dec.Token()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,8 +58,6 @@ func (r JsonReader) Read() {
 
 		r.ports <- map[string]proto.Port{id: p}
 		i++
-
-		log.Printf("%s processed\n", id)
 	}
 
 	log.Printf("%d Port(s) loaded", i)

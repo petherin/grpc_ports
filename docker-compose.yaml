@@ -17,8 +17,6 @@ services:
     environment:
       FILE_PATH: "/usr/local/bin/files/ports.json"
       SVC_URL: portsvc:50051
-    expose:
-      - 8080
     networks:
       - ports-network
     ports:

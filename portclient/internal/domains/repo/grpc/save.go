@@ -3,9 +3,8 @@ package grpc
 import (
 	"context"
 	"log"
-	"sync"
-
 	"portsvc/proto"
+	"sync"
 )
 
 type Repo struct {
@@ -14,11 +13,16 @@ type Repo struct {
 }
 
 // New returns a Repo with the ability to save to the ports gRPC service.
-func New(portCh chan map[string]proto.Port, client proto.PortsClient) Repo {
+// Also returns a channel to pass back ports as they're read.
+// This is unbuffered so will block as each port is processed. Would be better to have
+// a buffer so a few ports can be processed without blocking. Would need to be able
+// to save more than one port at a time to the service, maybe using gRPC streaming.
+func New(client proto.PortsClient) (Repo, chan map[string]proto.Port) {
+	portCh := make(chan map[string]proto.Port)
 	return Repo{
 		portCh: portCh,
 		client: client,
-	}
+	}, portCh
 }
 
 // Run starts waiting for ports on the channel and when it gets one, saves it to the port service.
@@ -26,7 +30,7 @@ func (r Repo) Run(ctx context.Context, wg *sync.WaitGroup) {
 	// tell the caller that we've stopped
 	defer wg.Done()
 
-	log.Println("Saver started...")
+	log.Println("Saver started")
 
 	for {
 		select {

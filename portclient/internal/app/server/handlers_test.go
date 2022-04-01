@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"portsvc/proto"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
-	"portsvc/proto"
 )
 
 type mockClientsPort struct {
-	list       map[string]*proto.Port
+	list       []*proto.Port
 	forceError error
 }
 
-func NewMockClientsPort(list map[string]*proto.Port, forceError error) mockClientsPort {
+func NewMockClientsPort(list []*proto.Port, forceError error) mockClientsPort {
 	return mockClientsPort{list: list, forceError: forceError}
 }
 
@@ -35,8 +35,8 @@ func (m mockClientsPort) GetPorts(ctx context.Context, in *proto.GetPortsRequest
 }
 
 func TestHandleGetPorts(t *testing.T) {
-	mockPortList := map[string]*proto.Port{
-		"testcode": {
+	mockPortList := []*proto.Port{
+		{
 			Name:        "testname",
 			City:        "testcity",
 			Country:     "testcountry",
@@ -63,7 +63,7 @@ func TestHandleGetPorts(t *testing.T) {
 			portsClient:    NewMockClientsPort(mockPortList, nil),
 			method:         http.MethodGet,
 			expectedStatus: http.StatusOK,
-			expected:       "{\"testcode\":{\"name\":\"testname\",\"city\":\"testcity\",\"country\":\"testcountry\",\"timezone\":\"testtimezone\",\"code\":\"testcode\"}}",
+			expected:       "[{\"name\":\"testname\",\"city\":\"testcity\",\"country\":\"testcountry\",\"timezone\":\"testtimezone\",\"code\":\"testcode\"}]",
 		},
 		{
 			name:           "2. Invalid method used, error returned",
@@ -88,7 +88,6 @@ func TestHandleGetPorts(t *testing.T) {
 			request := httptest.NewRequest(tc.method, "/ports", nil)
 
 			svr := New(tc.addr, tc.portsClient)
-			svr.Router.HandleFunc("/ports", svr.handleGetPorts())
 
 			svr.HTTPServer = &http.Server{Handler: &svr.Router}
 

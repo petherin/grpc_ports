@@ -4,11 +4,11 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"portsvc/proto"
 	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
-	"portsvc/proto"
 )
 
 type Server struct {

@@ -2,11 +2,13 @@ package json
 
 import (
 	"context"
+	"log"
+	"os"
+	"portsvc/proto"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"portsvc/proto"
 )
 
 func TestRead(t *testing.T) {
@@ -22,6 +24,7 @@ func TestRead(t *testing.T) {
 				"AEAJM": {
 					Name:        "Ajman",
 					City:        "Ajman",
+					Province:    "Ajman",
 					Country:     "United Arab Emirates",
 					Alias:       []string{},
 					Regions:     []string{},
@@ -35,11 +38,17 @@ func TestRead(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
+			file, err := os.Open(tc.path)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer file.Close()
 
-			reader, portCh := New(tc.path)
+			portCh := make(chan map[string]proto.Port)
+			reader := New(file, portCh)
 			go reader.Read()
 
-			// This isn't great because it'll hold up the testing if this times out.
+			// This isn't great because it'll hold up the testing if it runs long enough to time out.
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
 
